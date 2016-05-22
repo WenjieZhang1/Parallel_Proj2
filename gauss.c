@@ -13,7 +13,7 @@
 #include <sys/times.h>
 #include <sys/time.h>
 #include <limits.h>
-#include <pthread.h>
+#include "mpi.h"
 
 
 /*#include <ulocks.h>
@@ -24,10 +24,9 @@ char *ID;
 
 /* Program Parameters */
 #define MAXN 6000  /* Max value of N */
-#define CHUNK_SIZE 5
 int N;  /* Matrix size */
 int procs;  /* Number of processors to use */
-int myId;
+int myid;
 int NTHREADS=4;
 
 /* Matrices and vectors */
@@ -57,8 +56,8 @@ unsigned int time_seed() {
 void parameters(int argc, char **argv) {
   int submit = 0;  /* = 1 if submission parameters should be used */
   int seed = 0;  /* Random seed */
-  char uid[L_cuserid + 2]; /*User name */
-
+  //char uid[L_cuserid + 2]; /*User name */
+  char uid[32];
   /* Read command-line arguments */
   //  if (argc != 3) {
   if ( argc == 1 && !strcmp(argv[1], "submit") ) {
@@ -66,7 +65,7 @@ void parameters(int argc, char **argv) {
     submit = 1;
     N = 4;
     procs = 2;
-    printf("\nSubmission run for \"%s\".\n", cuserid(uid));
+    printf("\nSubmission run for \"%s\".\n", uid);
       /*uid = ID;*/
     strcpy(uid,ID);
     srand(randm());
@@ -192,29 +191,30 @@ int main(int argc, char **argv) {
     initialize_inputs();
     /* Print input matrices */
     print_inputs();
-  }
 
   /* Start Clock */
   printf("\nStarting clock.\n");
   gettimeofday(&etstart, &tzdummy);
   etstart2 = times(&cputstart);
-
+  }
   /* Gaussian Elimination */
   gauss();
+   
+  if(myid == 0) {
+    /* Stop Clock */
+    gettimeofday(&etstop, &tzdummy);
+    etstop2 = times(&cputstop);
+    printf("Stopped clock.\n");
+    usecstart = (unsigned long long)etstart.tv_sec * 1000000 + etstart.tv_usec;
+    usecstop = (unsigned long long)etstop.tv_sec * 1000000 + etstop.tv_usec;
 
-  /* Stop Clock */
-  gettimeofday(&etstop, &tzdummy);
-  etstop2 = times(&cputstop);
-  printf("Stopped clock.\n");
-  usecstart = (unsigned long long)etstart.tv_sec * 1000000 + etstart.tv_usec;
-  usecstop = (unsigned long long)etstop.tv_sec * 1000000 + etstop.tv_usec;
+    /* Display output */
+    print_X();
 
-  /* Display output */
-  print_X();
-
-  /* Display timing results */
-  printf("\nElapsed time = %g ms.\n",
-	 (float)(usecstop - usecstart)/(float)1000);
+    /* Display timing results */
+    printf("\nElapsed time = %g ms.\n",
+    (float)(usecstop - usecstart)/(float)1000);
+  }
   MPI_Finalize();
 
 /* Compare the result
@@ -274,19 +274,6 @@ void gauss1() {
  * defined in the beginning of this code.  X[] is initialized to zeros.
  */
 
-
-/*compute_gauss function is the main function for parallel computing.
- The basic idea of our algorithm is to parallel the second and third loop. Because we found the first loop has th dependcy that we could not eliminate.
- 
- Serialize the first loop:
- Every thread has it's own local_norm for the first loop and the while loop continue until the local_norm is bigger than N - 1. For every iteration we set local_norm equals to global_row and use two barriers before and after the second and third loop to synchronize.
-
- Parallize the second the third loop:
- The second and third loop are used to set one column of matrix zero, we use multiple threads to do this job. There are total N-norm rows each time. Every threads deal with part of them. We use dynamic scheduling. The global variable global_row indicate the next row need to be processed. When one thread is free it get CHUNK_SIZE rows work and updata the global_row. When the global_row is bigger than  N - 1 it means all row have the thread to process. Then we set a barrier here to wait all threads finish their work and continue to set zero for next column.
- */
-
-
-/*function gauss() create four threads for computing, each thread execute compute_gauss() functions*/
 void gauss() {
   MPI_Status status;
   MPI_Request request;
@@ -342,9 +329,9 @@ void gauss() {
 
   if(myid == 0) {
     /* Back substitution */
-    for (int row = N - 1; row >= 0; row--) {
+    for(row = N - 1; row >= 0; row--) {
       X[row] = B[row];
-      for (int col = N-1; col > row; col--) {
+      for(col = N-1; col > row; col--) {
         X[row] -= A[row][col] * X[col];
       }
       X[row] /= A[row][row];
