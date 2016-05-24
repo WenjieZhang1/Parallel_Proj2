@@ -163,30 +163,30 @@ int main(int argc, char **argv) {
   /* Gaussian Elimination */
   gauss();
    
-  // if(id == 0) {
-  //   /* Display output */
-  //   print_X();
-  //   // gauss_test();
-  //   // /* Compare the result*/
+  if(id == 0) {
+    /* Display output */
+    print_X();
+    gauss_test();
+    /* Compare the result*/
 
-  //   // int right = 1;
-  //   // int j = 0;
-  //   // for(; j < N; j++) {
-  //   //   float dif = X[j] - X1[j];
-  //   //   if (dif < 0)  dif = -dif;
-  //   //   if (dif > 0.0001) {
-  //   //     printf("X: %f\n", X[j]);
-  //   //     printf("X1: %f\n", X1[j]);
-  //   //     right = 0;
-  //   //     break;
-  //   //   }
-  //   // }
+    int right = 1;
+    int j = 0;
+    for(; j < N; j++) {
+      float dif = X[j] - X1[j];
+      if (dif < 0)  dif = -dif;
+      if (dif > 0.0001) {
+        printf("X: %f\n", X[j]);
+        printf("X1: %f\n", X1[j]);
+        right = 0;
+        break;
+      }
+    }
 
-  //   printf("right: %d\n",right);
-  //   if(right == 1)  printf("\nRight!\n");
-  //   else  printf("\nWrong!\n");
+    printf("right: %d\n",right);
+    if(right == 1)  printf("\nRight!\n");
+    else  printf("\nWrong!\n");
   
-  // }
+  }
 
   MPI_Finalize();
   return 0;
@@ -194,32 +194,32 @@ int main(int argc, char **argv) {
 
 
 /*----------------Follwoing code used for Testing----------------------------*/
-// void gauss_test() {
-//   int norm, row, col;  /* Normalization row, and zeroing
-// 			* element row and col */
-//   float multiplier;
+void gauss_test() {
+  int norm, row, col;  /* Normalization row, and zeroing
+			* element row and col */
+  float multiplier;
 
-//   printf("Computing Serially.\n");
+  printf("Computing Serially.\n");
 
-//   /* Gaussian elimination */
-//   for (norm = 0; norm < N - 1; norm++) {
-//     for (row = norm + 1; row < N; row++) {
-//       multiplier = A1[row][norm] / A1[norm][norm];
-//       for (col = norm; col < N; col++) {
-// 		  A1[row][col] -= A1[norm][col] * multiplier;
-//       }
-//       B1[row] -= B1[norm] * multiplier;
-//     }
-//   }
-//   /* Back substitution */
-//   for (row = N - 1; row >= 0; row--) {
-//     X1[row] = B1[row];
-//     for (col = N-1; col > row; col--) {
-//       X1[row] -= A1[row][col] * X1[col];
-//     }
-//     X1[row] /= A1[row][row];
-//   }
-// }
+  /* Gaussian elimination */
+  for (norm = 0; norm < N - 1; norm++) {
+    for (row = norm + 1; row < N; row++) {
+      multiplier = A1[row][norm] / A1[norm][norm];
+      for (col = norm; col < N; col++) {
+		  A1[row][col] -= A1[norm][col] * multiplier;
+      }
+      B1[row] -= B1[norm] * multiplier;
+    }
+  }
+  /* Back substitution */
+  for (row = N - 1; row >= 0; row--) {
+    X1[row] = B1[row];
+    for (col = N-1; col > row; col--) {
+      X1[row] -= A1[row][col] * X1[col];
+    }
+    X1[row] /= A1[row][row];
+  }
+}
 /*-----------Above code used for testing------------------------*/
 
 
@@ -236,27 +236,18 @@ void gauss() {
   float multiplier;
   double startwtime = 0.0;
   double endwtime;
-  // MPI_Barrier(MPI_COMM_WORLD);
 
   if(id == 0) {
     initialize_inputs();
     /* Print input matrices */
     print_inputs();
-    MPI_Bcast(&A, N*N, MPI_FLOAT, 0, MPI_COMM_WORLD);
-    MPI_Bcast(&B, N, MPI_FLOAT, 0, MPI_COMM_WORLD);
     printf("\nStart Computing Parallely Using MPI.\n");
     startwtime = MPI_Wtime();
   }
+  MPI_Bcast(&A, N*N, MPI_FLOAT, 0, MPI_COMM_WORLD);
+  MPI_Bcast(&B, N, MPI_FLOAT, 0, MPI_COMM_WORLD);
   for(norm = 0; norm < N - 1; norm++) {
-    // MPI_Bcast(&(A[norm][0]), N, MPI_FLOAT, 0, MPI_COMM_WORLD);
-    // MPI_Bcast(&(B[norm]), 1, MPI_FLOAT, 0, MPI_COMM_WORLD);
-    // if(id == 0) {
-    //   for(i = 1; i < procs; i++) {
-    //     for(row = norm+1+i; row < N; row +=procs) {
-    //       MPI_Send(&(A[row]), N, MPI_FLOAT, i, 0, MPI_COMM_WORLD);
-    //       MPI_Send(&(B[row]), 1, MPI_FLOAT, i, 1, MPI_COMM_WORLD);
-    //     }
-    //   }
+
 
       /*Gaussian elimination*/
       row = id+1;
@@ -273,29 +264,6 @@ void gauss() {
       MPI_Bcast(&A[norm+1], N, MPI_FLOAT, norm%procs, MPI_COMM_WORLD);
       MPI_Bcast(&B[norm+1], 1, MPI_FLOAT, norm%procs, MPI_COMM_WORLD);
 
-    //   /*Receive the updated data from other processes*/
-    //   for(i = 1; i < procs; i++){
-    //     for(row = norm + 1 + i; row < N; row += procs) {
-    //       MPI_Recv(&(A[row]), N, MPI_FLOAT, i, 2, MPI_COMM_WORLD, &status);
-    //       MPI_Recv(&(B[row]), 1, MPI_FLOAT, i, 3, MPI_COMM_WORLD, &status);
-    //     }
-    //   }
-    // }
-    // else {
-    //   for(row = norm + 1 + id; row < N; row += procs){
-    //     MPI_Recv(&A[row], N, MPI_FLOAT, 0, 0, MPI_COMM_WORLD, &status);
-    //     MPI_Recv(&B[row], 1, MPI_FLOAT, 0, 1, MPI_COMM_WORLD, &status);
-    //     /*Gaussian elimination*/
-    //     multiplier = A[row][norm] / A[norm][norm];
-    //     for(col = norm; col < N; col++) {
-    //       A[row][col] -= A[norm][col] * multiplier;
-    //     }
-    //     B[row] -= B[norm] * multiplier;
-    //     MPI_Send(&A[row], N, MPI_FLOAT, 0, 2, MPI_COMM_WORLD);
-    //     MPI_Send(&B[row], 1, MPI_FLOAT, 0, 3, MPI_COMM_WORLD);
-    //   }
-    // }
-    // MPI_Barrier(MPI_COMM_WORLD);
   }
 
   if(id == 0) {
