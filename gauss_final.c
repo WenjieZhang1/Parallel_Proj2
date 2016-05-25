@@ -208,20 +208,24 @@ void gauss() {
   double endwtime;
 
   if(id == 0) {
+  	/* initialize A, B matrix in processor 0 */
     initialize_inputs();
     /* Print input matrices */
     print_inputs();
     printf("\nStart Computing Parallely Using MPI.\n");
     startwtime = MPI_Wtime();
   }
+  /* Broadcast A, B matrix to other processors from processor 0 */
   MPI_Bcast(&A, N*N, MPI_FLOAT, 0, MPI_COMM_WORLD);
   MPI_Bcast(&B, N, MPI_FLOAT, 0, MPI_COMM_WORLD);
+  /*Gaussian elimination*/
   for(norm = 0; norm < N - 1; norm++) {
-      /*Gaussian elimination*/
-      row = id+1;
+  	/* For each processor compute which row to start */
+	  row = id+1;
       while(row < norm){
         row += procs;
       }
+    /* Do elimination for each process */
       for(; row < N; row += procs) {
         multiplier = A[row][norm] / A[norm][norm];
         for(col = norm; col < N; col++) {
@@ -229,10 +233,16 @@ void gauss() {
         }
         B[row] -= B[norm] * multiplier;
       }
+
+    /* Broadcast next norm row to each processor which will be 
+    	used in next round computation and the value of each element 
+    	in the norm+1 row will not be changed */
       MPI_Bcast(&A[norm+1], N, MPI_FLOAT, norm%procs, MPI_COMM_WORLD);
       MPI_Bcast(&B[norm+1], 1, MPI_FLOAT, norm%procs, MPI_COMM_WORLD);
   }
 
+  /* after all the processors complete elimination the processor 0 begin 
+  		doing back substitution */
   if(id == 0) {
     /* Back substitution */
     for(row = N - 1; row >= 0; row--) {
