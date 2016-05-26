@@ -149,9 +149,9 @@ int main(int argc, char **argv) {
   if(id == 0) {
     /* Display output */
     print_X();
+
+    /* Compare the result between MPI method and Serial method
     gauss_test();
-    
-    /* Compare the result*/
     int right = 1;
     int j = 0;
     for(; j < N; j++) {
@@ -166,7 +166,9 @@ int main(int argc, char **argv) {
     }
     if(right == 1)  printf("\nThe Result is Right!\n");
     else  printf("\nThe Result is Wrong!\n");
+    */
   }
+
 
   MPI_Finalize();
   return 0;
@@ -236,7 +238,7 @@ void gauss() {
 
     /* Broadcast next norm row to each processor which will be 
     	used in next round computation and the value of each element 
-    	in the norm+1 row will not be changed */
+    	in the norm+1 row will not be changed after this iteration */
       MPI_Bcast(&A[norm+1], N, MPI_FLOAT, norm%procs, MPI_COMM_WORLD);
       MPI_Bcast(&B[norm+1], 1, MPI_FLOAT, norm%procs, MPI_COMM_WORLD);
   }
